@@ -1,9 +1,10 @@
 --[[ 
-	Shadow Unit Frames (Arena), Mayen/Selari from Illidan (US) PvP
+	Shadow Unit Frames (Arena), Mayen of US-Mal'Ganis PvP
 ]]
 
 local L = {
 	["Arena"] = "Arena",
+	["Arena #%d"] = "Arena #%d",
 }
 
 local Arena = {}
@@ -17,8 +18,16 @@ function Arena:OnDefaultsSet()
 	ShadowUF.defaults.profile.units.arena.attribPoint = "TOP"
 	ShadowUF.defaults.profile.units.arena.indicators.raidTarget = nil
 	
-	ShadowUF.defaults.profile.positions.arena.anchorPoint = "C"
-	ShadowUF.defaults.profile.positions.arena.anchorTo = "UIParent"
+	ShadowUF.defaults.profile.positions.arena = {anchorPoint = "C", anchorTo = "UIParent", point = "", relativePoint = "", x = 0, y = 0}
+	
+	-- Make the new mover function support the arena units as well.
+	ShadowUF.arenaUnits = {}
+	for i=1, 5 do
+		table.insert(ShadowUF.arenaUnits, "arena" .. i)
+	end
+	
+	ShadowUF.modules.movers.headers.arena = true
+	ShadowUFLocals.headers["arena"] = L["Arena #%d"]
 end
 
 function Arena:OnConfigurationLoad()
@@ -29,6 +38,7 @@ function Arena:OnConfigurationLoad()
 		hidden = function(info) return info[2] ~= "arena" end,
 		set = function(info, value)
 			ShadowUF.Config.setUnit(info, value)
+			ShadowUF.modules.movers:Update()
 			Arena:UpdateHeader()
 		end,
 		get = ShadowUF.Config.getUnit,
@@ -140,13 +150,29 @@ local function OnEvent(self, event)
 				
 				frame.ignoreAnchor = true
 				frame:SetAttribute("unit", "arena" .. i)
-				RegisterUnitWatch(frame)
+				self:WrapScript(frame, "OnAttributeChanged", [[
+					if( name == "state-unitexists" ) then
+						if( value ) then
+							self:SetAttribute("lockedVisible", true)
+							self:Show()
+						elseif( not value and not self:GetAttribute("lockedVisible") ) then
+							self:Hide()
+						end
+					end
+				]])
 				
 				self.children[i] = frame
+				RegisterUnitWatch(frame, true)
 			end
 		end
 
 		Arena:UpdateHeader()
+	-- We were in an arena
+	elseif( type ~= "arena" and instanceType == "arena" ) then
+		for _, child in pairs(self.children) do
+			child:SetAttribute("lockedVisible", false)
+			child:Hide()
+		end
 	end
 	
 	instanceType = type
@@ -159,10 +185,23 @@ frame:SetScript("OnEvent", function(self, event)
 	if( not IsAddOnLoaded("ShadowedUnitFrames") ) then return end
 	self:UnregisterAllEvents()
 	
+	-- For me mostly, so if I break something in SUF this doens't error.
+	if( not ShadowUF ) then return end
+	
 	table.insert(ShadowUF.units, "arena")
 	ShadowUFLocals.units.arena = L["Arena"]
 
 	-- Hooking my own code, how fun!
+	local CreateHeader = ShadowUF.modules.movers.CreateHeader
+	ShadowUF.modules.movers.CreateHeader = function(self, type, ...)
+		CreateHeader(self, type, ...)
+		if( type ~= "arena" or not SUFMoverarena ) then return end
+		SUFMoverarena:SetHeight(0.1)
+		SUFMoverarena:SetWidth(0.1)
+	end
+	
+	-- Realllllllllllly I shouldn't do this, but it's such a corner case because the only unit that truly needs this is the arena units, not really
+	-- worth it for me to add plugins for something a single module uses when I can just hook it.
 	local OnInitialize = ShadowUF.OnInitialize
 	ShadowUF.OnInitialize = function(...)
 		OnInitialize(...)
@@ -182,7 +221,7 @@ frame:SetScript("OnEvent", function(self, event)
 		if( type == "arena" ) then
 			-- While arena# do not actually provide a header, we do a fake one to make faking it easier
 			if( not self.unitFrames[type] ) then
-				local header = CreateFrame("Frame", "SUFHeaderarena", UIParent)
+				local header = CreateFrame("Frame", "SUFHeaderarena", UIParent, "SecureHandlerBaseTemplate")
 				header:SetScript("OnEvent", OnEvent)
 				header:SetClampedToScreen(true)
 				header:SetMovable(true)

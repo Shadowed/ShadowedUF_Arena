@@ -1,7 +1,7 @@
 ## Interface: 30100
 ## Title: ShadowedUF Arena
 ## Notes: Unlocks the arena frame unitid in SUF
-## Author: Mayen/Selari
+## Author: Mayen
 ## RequiredDeps: ShadowedUnitFrames
 
 ShadowedUF_Arena.lua
