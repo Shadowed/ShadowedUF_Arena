@@ -163,6 +163,8 @@ local function OnEvent(self, event)
 				
 				self.children[i] = frame
 				RegisterUnitWatch(frame, true)
+			else
+				self:SetAttribute("lockedVisible", false)
 			end
 		end
 
@@ -186,7 +188,7 @@ frame:SetScript("OnEvent", function(self, event)
 	self:UnregisterAllEvents()
 	
 	-- For me mostly, so if I break something in SUF this doens't error.
-	if( not ShadowUF ) then return end
+	if( not ShadowUF or not ShadowUF.Units ) then return end
 	
 	table.insert(ShadowUF.units, "arena")
 	ShadowUFLocals.units.arena = L["Arena"]
