@@ -119,11 +119,11 @@ local function OnEvent(self, event)
 				self:SetAttribute("lockedVisible", false)
 
 				-- Create the child units
-				if( ShadowUF.db.profile.units.arenapet ) then
+				if( ShadowUF.db.profile.units.arenapet.enabled ) then
 					ShadowUF.Units:LoadPartyChildUnit(ShadowUF.db.profile.units.arenapet, SUFHeaderarena, "arenapet", "arenapet" .. i)
 				end
 
-				if( ShadowUF.db.profile.units.arenatarget ) then
+				if( ShadowUF.db.profile.units.arenatarget.enabled ) then
 					ShadowUF.Units:LoadPartyChildUnit(ShadowUF.db.profile.units.arenatarget, SUFHeaderarena, "arenatarget", "arena" .. i .. "target")
 				end
 			end
