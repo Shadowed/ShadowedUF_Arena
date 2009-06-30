@@ -4,6 +4,9 @@
 
 local L = {
 	["Arena"] = "Arena",
+	["Arena pet"] = "Arena pet",
+	["Arena target"] = "Arena target",
+	["Arena frames"] = "Arena frames",
 	["Arena #%d"] = "Arena #%d",
 }
 
@@ -19,6 +22,8 @@ function Arena:OnDefaultsSet()
 	ShadowUF.defaults.profile.units.arena.indicators.raidTarget = nil
 	
 	ShadowUF.defaults.profile.positions.arena = {anchorPoint = "C", anchorTo = "UIParent", point = "", relativePoint = "", x = 0, y = 0}
+	ShadowUF.defaults.profile.positions.arenapet = {anchorPoint = "RB", anchorTo = "$parent", x = 0, y = 0}
+	ShadowUF.defaults.profile.positions.arenatarget = {anchorPoint = "RT", anchorTo = "$parent", x = 0, y = 0}
 	
 	-- Make the new mover function support the arena units as well.
 	ShadowUF.arenaUnits = {}
@@ -26,62 +31,9 @@ function Arena:OnDefaultsSet()
 		table.insert(ShadowUF.arenaUnits, "arena" .. i)
 	end
 	
+	-- Make the mover work with this
 	ShadowUF.modules.movers.headers.arena = true
 	ShadowUFLocals.headers["arena"] = L["Arena #%d"]
-end
-
-function Arena:OnConfigurationLoad()
-	ShadowUF.Config.unitTable.args.arena = {
-		order = 1.5,
-		type = "group",
-		name = L["Arena"],
-		hidden = function(info) return info[2] ~= "arena" end,
-		set = function(info, value)
-			ShadowUF.Config.setUnit(info, value)
-			ShadowUF.modules.movers:Update()
-			Arena:UpdateHeader()
-		end,
-		get = ShadowUF.Config.getUnit,
-		args = {
-			general = {
-				type = "group",
-				inline = true,
-				name = ShadowUFLocals["General"],
-				args = {
-					xOffset = {
-						order = 1,
-						type = "range",
-						name = ShadowUFLocals["X Offset"],
-						min = -50, max = 50, step = 1,
-						hidden = function(info)
-							local point = ShadowUF.Config.getVariable(info[2], nil, nil, "attribPoint")
-							return point ~= "LEFT" and point ~= "RIGHT"
-						end,
-						arg = "xOffset",
-					},
-					yOffset = {
-						order = 2,
-						type = "range",
-						name = ShadowUFLocals["Y Offset"],
-						min = -50, max = 50, step = 1,
-						hidden = function(info)
-							local point = ShadowUF.Config.getVariable(info[2], nil, nil, "attribPoint")
-							return point ~= "TOP" and point ~= "BOTTOM"
-						end,
-						arg = "yOffset",
-					},
-					attribPoint = {
-						order = 3,
-						type = "select",
-						name = ShadowUFLocals["Frame growth"],
-						desc = ShadowUFLocals["How the frame should grow when new group members are added."],
-						values = {["TOP"] = ShadowUFLocals["Down"], ["LEFT"] = ShadowUFLocals["Right"], ["BOTTOM"] = ShadowUFLocals["Up"], ["RIGHT"] = ShadowUFLocals["Left"]},
-						arg = "attribPoint",
-					},
-				},
-			},
-		},
-	}
 end
 
 -- Ripped a lot of this out of SecureTemplates.lua, shame it's not global
@@ -163,8 +115,17 @@ local function OnEvent(self, event)
 				
 				self.children[i] = frame
 				RegisterUnitWatch(frame, true)
-			else
+
 				self:SetAttribute("lockedVisible", false)
+
+				-- Create the child units
+				if( ShadowUF.db.profile.units.arenapet ) then
+					ShadowUF.Units:LoadPartyChildUnit(ShadowUF.db.profile.units.arenapet, SUFHeaderarena, "arenapet", "arenapet" .. i)
+				end
+
+				if( ShadowUF.db.profile.units.arenatarget ) then
+					ShadowUF.Units:LoadPartyChildUnit(ShadowUF.db.profile.units.arenatarget, SUFHeaderarena, "arenatarget", "arena" .. i .. "target")
+				end
 			end
 		end
 
@@ -188,10 +149,14 @@ frame:SetScript("OnEvent", function(self, event)
 	self:UnregisterAllEvents()
 	
 	-- For me mostly, so if I break something in SUF this doens't error.
-	if( not ShadowUF or not ShadowUF.Units ) then return end
+	if( not ShadowUF or not ShadowUF.Units or not ShadowUF.modules.movers ) then return end
 	
 	table.insert(ShadowUF.units, "arena")
+	table.insert(ShadowUF.units, "arenatarget")
+	table.insert(ShadowUF.units, "arenapet")
 	ShadowUFLocals.units.arena = L["Arena"]
+	ShadowUFLocals.units.arenapet = L["Arena pet"]
+	ShadowUFLocals.units.arenatarget = L["Arena target"]
 
 	-- Hooking my own code, how fun!
 	local CreateHeader = ShadowUF.modules.movers.CreateHeader
@@ -215,6 +180,32 @@ frame:SetScript("OnEvent", function(self, event)
 			-- Except, arena frames do not have indicators attached to them so will just kill those off
 			ShadowUF.db.profile.units.arena.indicators = {}
 		end
+		
+		if( not ShadowUF.db.profile.units.arenapet.healthBar.height ) then
+			ShadowUF.db.profile.units.arenapet = CopyTable(ShadowUF.db.profile.units.partypet)
+			ShadowUF.db.profile.units.arenapet.enabled = false
+			ShadowUF.db.profile.units.arenapet.indicators = {}
+		end
+
+		if( not ShadowUF.db.profile.units.arenatarget.healthBar.height ) then
+			ShadowUF.db.profile.units.arenatarget = CopyTable(ShadowUF.db.profile.units.partytarget)
+			ShadowUF.db.profile.units.arenatarget.enabled = false
+			ShadowUF.db.profile.units.arenatarget.indicators = {}
+		end
+	end
+	
+	-- See if we need to add postioning data for the frames
+	local SetFrameAttributes = ShadowUF.Units.SetFrameAttributes
+	ShadowUF.Units.SetFrameAttributes = function(self, frame, type, ...)
+		if( type == "arenatarget" or type == "arenapet" ) then
+			frame:SetAttribute("framePositioned", false)
+			frame:SetAttribute("framePoint", ShadowUF.Layout:GetPoint(ShadowUF.db.profile.positions[type].anchorPoint))
+			frame:SetAttribute("frameRelative", ShadowUF.Layout:GetRelative(ShadowUF.db.profile.positions[type].anchorPoint))
+			frame:SetAttribute("frameX", ShadowUF.db.profile.positions[type].x)
+			frame:SetAttribute("frameY", ShadowUF.db.profile.positions[type].y)
+		end
+		
+		return SetFrameAttributes(self, frame, type, ...)
 	end
 	
 	-- Check if our unit was initialized
@@ -241,6 +232,12 @@ frame:SetScript("OnEvent", function(self, event)
 			self.unitFrames[type]:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 			ShadowUF.Layout:AnchorFrame(UIParent, self.unitFrames[type], ShadowUF.db.profile.positions[type])
 			return
+		elseif( type == "arenapet" or type == "arenatarget" ) then
+			if( self.unitFrames.arena ) then
+				for id=1, 5 do
+					self:LoadPartyChildUnit(ShadowUF.db.profile.units[type], SUFHeaderarena, type, type .. id)
+				end
+			end
 		end
 		
 		return InitializeFrame(self, config, type, ...)
@@ -259,3 +256,69 @@ frame:SetScript("OnEvent", function(self, event)
 		return UninitializeFrame(self, config, type, ...)
 	end
 end)
+
+function Arena:OnConfigurationLoad()
+	local getAnchorParents = ShadowUF.Config.getAnchorParents
+	local childAnchor = {["$parent"] = L["Arena frames"]}
+	ShadowUF.Config.getAnchorParents = function(info)
+		if( info[2] == "arenapet" or info[2] == "arenatarget" ) then
+			return childAnchor
+		end
+		
+		return getAnchorParents(info)
+	end
+	
+	ShadowUF.Config.unitTable.args.frame.args.anchor.args.anchorTo.values = ShadowUF.Config.getAnchorParents
+	ShadowUF.Config.unitTable.args.frame.args.position.args.anchorTo.values = ShadowUF.Config.getAnchorParents
+	ShadowUF.Config.unitTable.args.arena = {
+		order = 1.5,
+		type = "group",
+		name = L["Arena"],
+		hidden = function(info) return info[2] ~= "arena" end,
+		set = function(info, value)
+			ShadowUF.Config.setUnit(info, value)
+			ShadowUF.modules.movers:Update()
+			Arena:UpdateHeader()
+		end,
+		get = ShadowUF.Config.getUnit,
+		args = {
+			general = {
+				type = "group",
+				inline = true,
+				name = ShadowUFLocals["General"],
+				args = {
+					xOffset = {
+						order = 1,
+						type = "range",
+						name = ShadowUFLocals["X Offset"],
+						min = -50, max = 50, step = 1,
+						hidden = function(info)
+							local point = ShadowUF.Config.getVariable(info[2], nil, nil, "attribPoint")
+							return point ~= "LEFT" and point ~= "RIGHT"
+						end,
+						arg = "xOffset",
+					},
+					yOffset = {
+						order = 2,
+						type = "range",
+						name = ShadowUFLocals["Y Offset"],
+						min = -50, max = 50, step = 1,
+						hidden = function(info)
+							local point = ShadowUF.Config.getVariable(info[2], nil, nil, "attribPoint")
+							return point ~= "TOP" and point ~= "BOTTOM"
+						end,
+						arg = "yOffset",
+					},
+					attribPoint = {
+						order = 3,
+						type = "select",
+						name = ShadowUFLocals["Frame growth"],
+						desc = ShadowUFLocals["How the frame should grow when new group members are added."],
+						values = {["TOP"] = ShadowUFLocals["Down"], ["LEFT"] = ShadowUFLocals["Right"], ["BOTTOM"] = ShadowUFLocals["Up"], ["RIGHT"] = ShadowUFLocals["Left"]},
+						arg = "attribPoint",
+					},
+				},
+			},
+		},
+	}
+end
