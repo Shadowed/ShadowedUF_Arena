@@ -206,7 +206,7 @@ frame:SetScript("OnEvent", function(self, event)
 			return
 		end
 		
-		return SetFrameAttributes(self, type, ...)
+		return ReloadHeader(self, type, ...)
 	end
 	
 	-- Check if our unit was initialized
