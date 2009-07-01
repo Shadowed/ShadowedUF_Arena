@@ -95,13 +95,13 @@ local function OnEvent(self, event)
 	local type = select(2, IsInInstance())
 	-- Entered an arena, weren't in one before
 	if( type == "arena" and instanceType ~= type ) then
-		for i=1, 5 do
-			if( not self.children[i] ) then
-				local frame = CreateFrame("Button", self:GetName() .. "UnitButton" .. i, self, "SecureUnitButtonTemplate")
+		for id, unit in pairs(ShadowUF.arenaUnits) do
+			if( not self.children[id] ) then
+				local frame = CreateFrame("Button", self:GetName() .. "UnitButton" .. id, self, "SecureUnitButtonTemplate")
 				ShadowUF.Units:CreateUnit(frame)
 				
 				frame.ignoreAnchor = true
-				frame:SetAttribute("unit", "arena" .. i)
+				frame:SetAttribute("unit", unit)
 				self:WrapScript(frame, "OnAttributeChanged", [[
 					if( name == "state-unitexists" ) then
 						if( value ) then
@@ -113,19 +113,19 @@ local function OnEvent(self, event)
 					end
 				]])
 				
-				self.children[i] = frame
+				self.children[id] = frame
 				RegisterUnitWatch(frame, true)
 
 				self:SetAttribute("lockedVisible", false)
+			end
 
-				-- Create the child units
-				if( ShadowUF.Units.loadedUnits.arenapet ) then
-					ShadowUF.Units:LoadChildUnit(self.children[i], "arenapet", "arenapet" .. i)
-				end
+			-- Create the child units
+			if( ShadowUF.Units.loadedUnits.arenapet ) then
+				ShadowUF.Units:LoadChildUnit(self.children[id], "arenapet", "arenapet" .. id)
+			end
 
-				if( ShadowUF.db.profile.units.arenatarget.enabled ) then
-					ShadowUF.Units:LoadChildUnit(self.children[i], "arenatarget", "arena" .. i .. "target")
-				end
+			if( ShadowUF.Units.loadedUnits.arenatarget ) then
+				ShadowUF.Units:LoadChildUnit(self.children[id], "arenatarget", unit .. "target")
 			end
 		end
 
@@ -178,19 +178,22 @@ frame:SetScript("OnEvent", function(self, event)
 		if( not ShadowUF.db.profile.units.arena.healthBar.height ) then
 			ShadowUF.db.profile.units.arena = CopyTable(ShadowUF.db.profile.units.party)
 			-- Except, arena frames do not have indicators attached to them so will just kill those off
-			ShadowUF.db.profile.units.arena.indicators = {}
+			ShadowUF.db.profile.units.arena.indicators = nil
+			ShadowUF.defaults.profile.units.arena.indicators = nil
 		end
 		
 		if( not ShadowUF.db.profile.units.arenapet.healthBar.height ) then
 			ShadowUF.db.profile.units.arenapet = CopyTable(ShadowUF.db.profile.units.partypet)
 			ShadowUF.db.profile.units.arenapet.enabled = false
-			ShadowUF.db.profile.units.arenapet.indicators = {}
+			ShadowUF.db.profile.units.arenapet.indicators = nil
+			ShadowUF.defaults.profile.units.arenapet.indicators = nil
 		end
 
 		if( not ShadowUF.db.profile.units.arenatarget.healthBar.height ) then
 			ShadowUF.db.profile.units.arenatarget = CopyTable(ShadowUF.db.profile.units.partytarget)
 			ShadowUF.db.profile.units.arenatarget.enabled = false
-			ShadowUF.db.profile.units.arenatarget.indicators = {}
+			ShadowUF.db.profile.units.arenatarget.indicators = nil
+			ShadowUF.defaults.profile.units.arenatarget.indicators = nil
 		end
 	end
 	
@@ -231,12 +234,19 @@ frame:SetScript("OnEvent", function(self, event)
 			end
 			
 			self.unitFrames[type]:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+			self.unitFrames[type]:RegisterEvent("PLAYER_ENTERING_WORLD")
 			ShadowUF.Layout:AnchorFrame(UIParent, self.unitFrames[type], ShadowUF.db.profile.positions[type])
 			return
-		elseif( type == "arenapet" or type == "arenatarget" ) then
-			for id=1, 5 do
-				if( self.loadedUnits[ShadowUF.arenaUnits[i]] ) then
-					self:LoadChildUnit(self.loadedUnits[ShadowUF.arenaUnits[i]], type, type .. id)
+		elseif( type == "arenapet" ) then
+			for id, unit in pairs(ShadowUF.arenaUnits) do
+				if( self.loadedUnits[unit] ) then
+					self:LoadChildUnit(self.unitFrames[unit], type, type .. id)
+				end
+			end
+		elseif( type == "arenatarget" ) then
+			for id, unit in pairs(ShadowUF.arenaUnits) do
+				if( self.loadedUnits[unit] ) then
+					self:LoadChildUnit(self.unitFrames[unit], type, "arena" .. id .. "target")
 				end
 			end
 		end
@@ -250,6 +260,7 @@ frame:SetScript("OnEvent", function(self, event)
 		if( type == "arena" ) then
 			if( self.unitFrames[type] ) then
 				self.unitFrames[type]:UnregisterEvent("ZONE_CHANGED_NEW_AREA")
+				self.unitFrames[type]:UnregisterEvent("PLAYER_ENTERING_WORLD")
 			end
 			return
 		end
