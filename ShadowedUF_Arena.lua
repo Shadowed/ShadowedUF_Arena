@@ -119,12 +119,12 @@ local function OnEvent(self, event)
 				self:SetAttribute("lockedVisible", false)
 
 				-- Create the child units
-				if( ShadowUF.db.profile.units.arenapet.enabled ) then
-					ShadowUF.Units:LoadPartyChildUnit(ShadowUF.db.profile.units.arenapet, SUFHeaderarena, "arenapet", "arenapet" .. i)
+				if( ShadowUF.Units.loadedUnits.arenapet ) then
+					ShadowUF.Units:LoadChildUnit(self.children[i], "arenapet", "arenapet" .. i)
 				end
 
 				if( ShadowUF.db.profile.units.arenatarget.enabled ) then
-					ShadowUF.Units:LoadPartyChildUnit(ShadowUF.db.profile.units.arenatarget, SUFHeaderarena, "arenatarget", "arena" .. i .. "target")
+					ShadowUF.Units:LoadChildUnit(self.children[i], "arenatarget", "arena" .. i .. "target")
 				end
 			end
 		end
@@ -195,17 +195,18 @@ frame:SetScript("OnEvent", function(self, event)
 	end
 	
 	-- See if we need to add postioning data for the frames
-	local SetFrameAttributes = ShadowUF.Units.SetFrameAttributes
-	ShadowUF.Units.SetFrameAttributes = function(self, frame, type, ...)
+	local ReloadHeader = ShadowUF.Units.ReloadHeader
+	ShadowUF.Units.ReloadHeader = function(self, type, ...)
 		if( type == "arenatarget" or type == "arenapet" ) then
-			frame:SetAttribute("framePositioned", false)
-			frame:SetAttribute("framePoint", ShadowUF.Layout:GetPoint(ShadowUF.db.profile.positions[type].anchorPoint))
-			frame:SetAttribute("frameRelative", ShadowUF.Layout:GetRelative(ShadowUF.db.profile.positions[type].anchorPoint))
-			frame:SetAttribute("frameX", ShadowUF.db.profile.positions[type].x)
-			frame:SetAttribute("frameY", ShadowUF.db.profile.positions[type].y)
+			for _, frame in pairs(self.unitFrames) do
+				if( frame.unitType == type ) then
+					ShadowUF.Layout:AnchorFrame(self.unitFrames[ShadowUF.arenaUnits[frame.unitID]], frame, ShadowUF.db.profile.positions[type])
+				end
+			end
+			return
 		end
 		
-		return SetFrameAttributes(self, frame, type, ...)
+		return SetFrameAttributes(self, type, ...)
 	end
 	
 	-- Check if our unit was initialized
@@ -233,9 +234,9 @@ frame:SetScript("OnEvent", function(self, event)
 			ShadowUF.Layout:AnchorFrame(UIParent, self.unitFrames[type], ShadowUF.db.profile.positions[type])
 			return
 		elseif( type == "arenapet" or type == "arenatarget" ) then
-			if( self.unitFrames.arena ) then
-				for id=1, 5 do
-					self:LoadPartyChildUnit(ShadowUF.db.profile.units[type], SUFHeaderarena, type, type .. id)
+			for id=1, 5 do
+				if( self.loadedUnits[ShadowUF.arenaUnits[i]] ) then
+					self:LoadChildUnit(self.loadedUnits[ShadowUF.arenaUnits[i]], type, type .. id)
 				end
 			end
 		end
