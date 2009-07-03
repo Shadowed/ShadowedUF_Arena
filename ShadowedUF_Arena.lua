@@ -160,8 +160,8 @@ frame:SetScript("OnEvent", function(self, event)
 
 	-- Hooking my own code, how fun!
 	local CreateHeader = ShadowUF.modules.movers.CreateHeader
-	ShadowUF.modules.movers.CreateHeader = function(self, type, ...)
-		CreateHeader(self, type, ...)
+	ShadowUF.modules.movers.CreateHeader = function(self, type)
+		CreateHeader(self, type)
 		if( type ~= "arena" or not SUFMoverarena ) then return end
 		SUFMoverarena:SetHeight(0.1)
 		SUFMoverarena:SetWidth(0.1)
@@ -170,8 +170,8 @@ frame:SetScript("OnEvent", function(self, event)
 	-- Realllllllllllly I shouldn't do this, but it's such a corner case because the only unit that truly needs this is the arena units, not really
 	-- worth it for me to add plugins for something a single module uses when I can just hook it.
 	local OnInitialize = ShadowUF.OnInitialize
-	ShadowUF.OnInitialize = function(...)
-		OnInitialize(...)
+	ShadowUF.OnInitialize = function(self)
+		OnInitialize(self)
 		
 		-- Basically, the first time we load this we need to set the layout data, because we do not re-import the layout
 		-- so pretty much, we're hacking in another units configuration (In this case, arenas)
@@ -199,7 +199,7 @@ frame:SetScript("OnEvent", function(self, event)
 	
 	-- See if we need to add postioning data for the frames
 	local ReloadHeader = ShadowUF.Units.ReloadHeader
-	ShadowUF.Units.ReloadHeader = function(self, type, ...)
+	ShadowUF.Units.ReloadHeader = function(self, type,)
 		if( type == "arenatarget" or type == "arenapet" ) then
 			for _, frame in pairs(self.unitFrames) do
 				if( frame.unitType == type ) then
@@ -209,12 +209,12 @@ frame:SetScript("OnEvent", function(self, event)
 			return
 		end
 		
-		return ReloadHeader(self, type, ...)
+		return ReloadHeader(self, type)
 	end
 	
 	-- Check if our unit was initialized
 	local InitializeFrame = ShadowUF.Units.InitializeFrame
-	ShadowUF.Units.InitializeFrame = function(self, config, type, ...)
+	ShadowUF.Units.InitializeFrame = function(self, config, type)
 		if( type == "arena" ) then
 			-- While arena# do not actually provide a header, we do a fake one to make faking it easier
 			if( not self.unitFrames[type] ) then
@@ -251,12 +251,12 @@ frame:SetScript("OnEvent", function(self, event)
 			end
 		end
 		
-		return InitializeFrame(self, config, type, ...)
+		return InitializeFrame(self, config, type)
 	end
 
 	-- Check if the frame was uninitialized
 	local UninitializeFrame = ShadowUF.Units.UninitializeFrame
-	ShadowUF.Units.UninitializeFrame = function(self, config, type, ...)
+	ShadowUF.Units.UninitializeFrame = function(self, config, type)
 		if( type == "arena" ) then
 			if( self.unitFrames[type] ) then
 				self.unitFrames[type]:UnregisterEvent("ZONE_CHANGED_NEW_AREA")
@@ -265,7 +265,7 @@ frame:SetScript("OnEvent", function(self, event)
 			return
 		end
 		
-		return UninitializeFrame(self, config, type, ...)
+		return UninitializeFrame(self, config, type)
 	end
 end)
 
