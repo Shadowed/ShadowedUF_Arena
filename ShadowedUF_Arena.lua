@@ -90,18 +90,39 @@ function Arena:UpdateHeader()
 	ShadowUF.Layout:AnchorFrame(UIParent, ShadowUF.Units.unitFrames.arena, ShadowUF.db.profile.positions.arena)
 end
 
+-- OnUpdate for the arena children
+local function OnUpdate(self, elapsed)
+	self.timeElapsed = self.timeElapsed + elapsed
+	if( self.timeElapsed >= self.pollInterval ) then
+		self.timeElapsed = 0
+		
+		if( self.exists and not UnitExists(self.unit) ) then
+			self.exists = nil
+			self.pollInterval = 0.5
+		elseif( not self.exists and UnitExists(self.unit) ) then
+			self.exists = true
+			self.pollInterval = 1
+			self.parent:FullUpdate()
+		end
+	end
+end
+
+-- OnEvent for the arena header
 local instanceType
 local function OnEvent(self, event)
 	local type = select(2, IsInInstance())
 	-- Entered an arena, weren't in one before
 	if( type == "arena" and instanceType ~= type ) then
 		for id, unit in pairs(ShadowUF.arenaUnits) do
+			-- Frame doesn't exist yet, create it
 			if( not self.children[id] ) then
 				local frame = CreateFrame("Button", self:GetName() .. "UnitButton" .. id, self, "SecureUnitButtonTemplate")
 				ShadowUF.Units:CreateUnit(frame)
-				
 				frame.ignoreAnchor = true
 				frame:SetAttribute("unit", unit)
+				
+				-- We don't want frames to hide after they've been shown, so will lock them in place
+				-- this prevents them from hiding if a Rogue vanishes and such
 				self:WrapScript(frame, "OnAttributeChanged", [[
 					if( name == "state-unitexists" ) then
 						if( value ) then
@@ -113,10 +134,17 @@ local function OnEvent(self, event)
 					end
 				]])
 				
-				self.children[id] = frame
 				RegisterUnitWatch(frame, true)
-
-				self:SetAttribute("lockedVisible", false)
+				self.children[id] = frame
+				
+				-- When someone disappears they are never shown as anything but offline
+				-- due to the fact that the frame is never shown again, so will do an OnUpdate
+				-- to watch if they disappeared and force an update
+				frame.existFrame = CreateFrame("Frame", nil, frame)
+				frame.existFrame.pollInterval = 1
+				frame.existFrame.timeElapsed = 0
+				frame.existFrame.parent = frame
+				frame.existFrame:SetScript("OnUpdate", OnUpdate)
 			end
 
 			-- Create the child units
@@ -127,6 +155,11 @@ local function OnEvent(self, event)
 			if( ShadowUF.Units.loadedUnits.arenatarget ) then
 				ShadowUF.Units:LoadChildUnit(self.children[id], "arenatarget", unit .. "target")
 			end
+
+			-- Unlock them of course too
+			self.children[id]:SetAttribute("lockedVisible", false)
+			self.children[id].existFrame.exists = true
+			self.children[id].existFrame.unit = unit
 		end
 
 		Arena:UpdateHeader()
@@ -196,22 +229,7 @@ frame:SetScript("OnEvent", function(self, event)
 			ShadowUF.defaults.profile.units.arenatarget.indicators = nil
 		end
 	end
-	
-	-- See if we need to add postioning data for the frames
-	local ReloadHeader = ShadowUF.Units.ReloadHeader
-	ShadowUF.Units.ReloadHeader = function(self, type,)
-		if( type == "arenatarget" or type == "arenapet" ) then
-			for _, frame in pairs(self.unitFrames) do
-				if( frame.unitType == type ) then
-					ShadowUF.Layout:AnchorFrame(self.unitFrames[ShadowUF.arenaUnits[frame.unitID]], frame, ShadowUF.db.profile.positions[type])
-				end
-			end
-			return
-		end
 		
-		return ReloadHeader(self, type)
-	end
-	
 	-- Check if our unit was initialized
 	local InitializeFrame = ShadowUF.Units.InitializeFrame
 	ShadowUF.Units.InitializeFrame = function(self, config, type)
@@ -236,16 +254,22 @@ frame:SetScript("OnEvent", function(self, event)
 			self.unitFrames[type]:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 			self.unitFrames[type]:RegisterEvent("PLAYER_ENTERING_WORLD")
 			ShadowUF.Layout:AnchorFrame(UIParent, self.unitFrames[type], ShadowUF.db.profile.positions[type])
+
+			self.loadedUnits[type] = true
 			return
 		elseif( type == "arenapet" ) then
+			self.loadedUnits[type] = true
+
 			for id, unit in pairs(ShadowUF.arenaUnits) do
-				if( self.loadedUnits[unit] ) then
+				if( self.loadedUnits.arena and self.unitFrames[unit] ) then
 					self:LoadChildUnit(self.unitFrames[unit], type, type .. id)
 				end
 			end
 		elseif( type == "arenatarget" ) then
+			self.loadedUnits[type] = true
+
 			for id, unit in pairs(ShadowUF.arenaUnits) do
-				if( self.loadedUnits[unit] ) then
+				if( self.loadedUnits.arena and self.unitFrames[unit] ) then
 					self:LoadChildUnit(self.unitFrames[unit], type, "arena" .. id .. "target")
 				end
 			end
@@ -258,6 +282,8 @@ frame:SetScript("OnEvent", function(self, event)
 	local UninitializeFrame = ShadowUF.Units.UninitializeFrame
 	ShadowUF.Units.UninitializeFrame = function(self, config, type)
 		if( type == "arena" ) then
+			self.loadedUnits[type] = nil
+			
 			if( self.unitFrames[type] ) then
 				self.unitFrames[type]:UnregisterEvent("ZONE_CHANGED_NEW_AREA")
 				self.unitFrames[type]:UnregisterEvent("PLAYER_ENTERING_WORLD")
