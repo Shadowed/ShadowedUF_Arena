@@ -16,8 +16,7 @@ ShadowUF:RegisterModule(Arena, "arena")
 function Arena:OnDefaultsSet()
 	ShadowUF.defaults.profile.units.arena.height = 55
 	ShadowUF.defaults.profile.units.arena.width = 190
-	ShadowUF.defaults.profile.units.arena.xOffset = 0
-	ShadowUF.defaults.profile.units.arena.yOffset = 0
+	ShadowUF.defaults.profile.units.arena.offset = 0
 	ShadowUF.defaults.profile.units.arena.attribPoint = "TOP"
 	ShadowUF.defaults.profile.units.arena.indicators.raidTarget = nil
 	
@@ -65,14 +64,15 @@ function Arena:UpdateHeader()
 
 	local frame = ShadowUF.Units.unitFrames.arena
 	local config = ShadowUF.db.profile.units.arena
-	frame:SetAttribute("point", config.attribPoint)
-	frame:SetAttribute("xOffset", config.xOffset)
-	frame:SetAttribute("yOffset", config.yOffset)
-	
-	if( #(frame.children) == 0 ) then return end
-	
+
     local point = frame:GetAttribute("point") or "TOP"
     local relativePoint, xOffsetMulti, yOffsetMulti = getRelativeAnchor(point)
+	frame:SetAttribute("point", config.attribPoint)
+	frame:SetAttribute("xOffset", config.offset * xOffsetMulti)
+	frame:SetAttribute("yOffset", config.offset * yOffsetMulti)
+	
+	if( #(frame.children) == 0 ) then return end
+
     local xMultiplier, yMultiplier = math.abs(xOffsetMulti), math.abs(yOffsetMulti)
     local x = frame:GetAttribute("xOffset") or 0
     local y = frame:GetAttribute("yOffset") or 0
@@ -137,9 +137,9 @@ local function OnEvent(self, event)
 				RegisterUnitWatch(frame, true)
 				self.children[id] = frame
 				
-				-- When someone disappears they are never shown as anything but offline
-				-- due to the fact that the frame is never shown again, so will do an OnUpdate
-				-- to watch if they disappeared and force an update
+				-- When a unit becomes invalid due to them stealthing after seeing them they are considered offline
+				-- normally this wouldn't be an issue since unit watch handles it, but since I override it, also need
+				-- to do a poll and check if we have to update the frames when they are back
 				frame.existFrame = CreateFrame("Frame", nil, frame)
 				frame.existFrame.pollInterval = 1
 				frame.existFrame.timeElapsed = 0
@@ -244,6 +244,7 @@ frame:SetScript("OnEvent", function(self, event)
 				header:SetWidth(0.1)
 				header.unitType = "arena"
 				header.children = {}
+				header.isHeaderFrame = true
 				
 				self.unitFrames[type] = header
 				
@@ -324,28 +325,14 @@ function Arena:OnConfigurationLoad()
 				type = "group",
 				inline = true,
 				name = ShadowUFLocals["General"],
+				hidden = false,
 				args = {
-					xOffset = {
-						order = 1,
-						type = "range",
-						name = ShadowUFLocals["X Offset"],
-						min = -50, max = 50, step = 1,
-						hidden = function(info)
-							local point = ShadowUF.Config.getVariable(info[2], nil, nil, "attribPoint")
-							return point ~= "LEFT" and point ~= "RIGHT"
-						end,
-						arg = "xOffset",
-					},
-					yOffset = {
+					offset = {
 						order = 2,
 						type = "range",
-						name = ShadowUFLocals["Y Offset"],
-						min = -50, max = 50, step = 1,
-						hidden = function(info)
-							local point = ShadowUF.Config.getVariable(info[2], nil, nil, "attribPoint")
-							return point ~= "TOP" and point ~= "BOTTOM"
-						end,
-						arg = "yOffset",
+						name = ShadowUFLocals["Row offset"],
+						min = 0, max = 100, step = 1,
+						arg = "offset",
 					},
 					attribPoint = {
 						order = 3,
