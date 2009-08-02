@@ -149,11 +149,11 @@ local function OnEvent(self, event)
 
 			-- Create the child units
 			if( ShadowUF.Units.loadedUnits.arenapet ) then
-				ShadowUF.Units:LoadChildUnit(self.children[id], "arenapet", "arenapet" .. id)
+				ShadowUF.Units:LoadChildUnit(self, unit, "arenapet", "arenapet" .. id)
 			end
 
 			if( ShadowUF.Units.loadedUnits.arenatarget ) then
-				ShadowUF.Units:LoadChildUnit(self.children[id], "arenatarget", unit .. "target")
+				ShadowUF.Units:LoadChildUnit(self, unit, "arenatarget", unit .. "target")
 			end
 
 			-- Unlock them of course too
@@ -184,6 +184,9 @@ frame:SetScript("OnEvent", function(self, event)
 	-- For me mostly, so if I break something in SUF this doens't error.
 	if( not ShadowUF or not ShadowUF.Units or not ShadowUF.modules.movers ) then return end
 	
+	ShadowUF.modules.movers.childHeaders.arenatarget = "arena"
+	ShadowUF.modules.movers.childHeaders.arenapet = "arena"
+
 	table.insert(ShadowUF.units, "arena")
 	table.insert(ShadowUF.units, "arenatarget")
 	table.insert(ShadowUF.units, "arenapet")
@@ -263,7 +266,7 @@ frame:SetScript("OnEvent", function(self, event)
 
 			for id, unit in pairs(ShadowUF.arenaUnits) do
 				if( self.loadedUnits.arena and self.unitFrames[unit] ) then
-					self:LoadChildUnit(self.unitFrames[unit], type, type .. id)
+					self:LoadChildUnit(self.unitFrames.arena, unit, type, type .. id)
 				end
 			end
 		elseif( type == "arenatarget" ) then
@@ -271,7 +274,7 @@ frame:SetScript("OnEvent", function(self, event)
 
 			for id, unit in pairs(ShadowUF.arenaUnits) do
 				if( self.loadedUnits.arena and self.unitFrames[unit] ) then
-					self:LoadChildUnit(self.unitFrames[unit], type, "arena" .. id .. "target")
+					self:LoadChildUnit(self.unitFrames.arena, unit, type, "arena" .. id .. "target")
 				end
 			end
 		end
