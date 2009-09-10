@@ -31,7 +31,10 @@ function Arena:OnDefaultsSet()
 	end
 	
 	-- Make the mover work with this
-	ShadowUF.modules.movers.headers.arena = true
+	ShadowUF.modules.movers.headers.arena = "arenaUnits"
+	ShadowUF.modules.movers.headerDesc.arena = L["Arena frames"]
+	ShadowUF.modules.movers.childHeaders.arenapet = "arena"
+	ShadowUF.modules.movers.childHeaders.arenatarget = "arena"
 	ShadowUFLocals.headers["arena"] = L["Arena #%d"]
 end
 
@@ -184,24 +187,12 @@ frame:SetScript("OnEvent", function(self, event)
 	-- For me mostly, so if I break something in SUF this doens't error.
 	if( not ShadowUF or not ShadowUF.Units or not ShadowUF.modules.movers ) then return end
 	
-	ShadowUF.modules.movers.childHeaders.arenatarget = "arena"
-	ShadowUF.modules.movers.childHeaders.arenapet = "arena"
-
 	table.insert(ShadowUF.units, "arena")
 	table.insert(ShadowUF.units, "arenatarget")
 	table.insert(ShadowUF.units, "arenapet")
 	ShadowUFLocals.units.arena = L["Arena"]
 	ShadowUFLocals.units.arenapet = L["Arena pet"]
 	ShadowUFLocals.units.arenatarget = L["Arena target"]
-
-	-- Hooking my own code, how fun!
-	local CreateHeader = ShadowUF.modules.movers.CreateHeader
-	ShadowUF.modules.movers.CreateHeader = function(self, type)
-		CreateHeader(self, type)
-		if( type ~= "arena" or not SUFMoverarena ) then return end
-		SUFMoverarena:SetHeight(0.1)
-		SUFMoverarena:SetWidth(0.1)
-	end
 	
 	-- Realllllllllllly I shouldn't do this, but it's such a corner case because the only unit that truly needs this is the arena units, not really
 	-- worth it for me to add plugins for something a single module uses when I can just hook it.
