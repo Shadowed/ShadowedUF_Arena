@@ -148,15 +148,15 @@ local function OnEvent(self, event)
 				frame.existFrame.timeElapsed = 0
 				frame.existFrame.parent = frame
 				frame.existFrame:SetScript("OnUpdate", OnUpdate)
-			end
 
-			-- Create the child units
-			if( ShadowUF.Units.loadedUnits.arenapet ) then
-				ShadowUF.Units:LoadChildUnit(self, unit, "arenapet", "arenapet" .. id)
-			end
-
-			if( ShadowUF.Units.loadedUnits.arenatarget ) then
-				ShadowUF.Units:LoadChildUnit(self, unit, "arenatarget", unit .. "target")
+				-- Create the child units
+				if( ShadowUF.Units.loadedUnits.arenapet ) then
+					ShadowUF.Units:LoadChildUnit(frame, "arenapet", id)
+				end
+		
+				if( ShadowUF.Units.loadedUnits.arenatarget ) then
+					ShadowUF.Units:LoadChildUnit(frame, "arenatarget", id)
+				end
 			end
 
 			-- Unlock them of course too
@@ -252,20 +252,12 @@ frame:SetScript("OnEvent", function(self, event)
 
 			self.loadedUnits[type] = true
 			return
-		elseif( type == "arenapet" ) then
+		elseif( type == "arenapet" or type == "arenatarget" ) then
 			self.loadedUnits[type] = true
 
 			for id, unit in pairs(ShadowUF.arenaUnits) do
 				if( self.loadedUnits.arena and self.unitFrames[unit] ) then
-					self:LoadChildUnit(self.unitFrames.arena, unit, type, type .. id)
-				end
-			end
-		elseif( type == "arenatarget" ) then
-			self.loadedUnits[type] = true
-
-			for id, unit in pairs(ShadowUF.arenaUnits) do
-				if( self.loadedUnits.arena and self.unitFrames[unit] ) then
-					self:LoadChildUnit(self.unitFrames.arena, unit, type, "arena" .. id .. "target")
+					ShadowUF.Units:LoadChildUnit(self.unitFrames[unit], type, id)
 				end
 			end
 		end
